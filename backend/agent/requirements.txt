@@ -1,0 +1,9 @@
+livekit
+livekit-agents
+livekit-plugins-openai
+faster-whisper
+kokoro-onnx
+httpx
+numpy
+scipy
+sse-starlette

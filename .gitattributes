@@ -1,0 +1,61 @@
+# ──────────────────────────────────────────────
+# Default: normalize line endings to LF on commit
+# ──────────────────────────────────────────────
+* text=auto eol=lf
+
+# ──────────────────────────────────────────────
+# Explicit text files
+# ──────────────────────────────────────────────
+*.py        text eol=lf
+*.ts        text eol=lf
+*.tsx       text eol=lf
+*.js        text eol=lf
+*.jsx       text eol=lf
+*.json      text eol=lf
+*.html      text eol=lf
+*.css       text eol=lf
+*.md        text eol=lf
+*.txt       text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.toml      text eol=lf
+*.sh        text eol=lf
+*.env       text eol=lf
+.gitignore  text eol=lf
+
+# ──────────────────────────────────────────────
+# Binary files — no diffing / no EOL conversion
+# ──────────────────────────────────────────────
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.ico       binary
+*.svg       binary
+*.webp      binary
+*.mp3       binary
+*.mp4       binary
+*.wav       binary
+*.ogg       binary
+*.woff      binary
+*.woff2     binary
+*.ttf       binary
+*.otf       binary
+*.eot       binary
+*.zip       binary
+*.tar.gz    binary
+*.tgz       binary
+*.gz        binary
+
+# ML model formats
+*.gguf      binary
+*.ggml      binary
+*.onnx      binary
+*.bin       binary
+*.pt        binary
+*.pth       binary
+*.safetensors binary
+*.pkl       binary
+
+# Lock files — treat as text but don't diff
+package-lock.json   text eol=lf -diff

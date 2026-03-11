@@ -7,33 +7,26 @@ logger = logging.getLogger(__name__)
 
 
 class LLM:
-    def __init__(self, base_url: str):
+    def __init__(self, base_url: str, api_key: str, model: str):
         self.base_url = base_url
-        self.client = httpx.Client(timeout=120.0)
-        self.model = "llama-3.2-3b"
+        self.api_key = api_key
+        self.model = model
+        self.client = httpx.Client(
+            timeout=120.0,
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            }
+        )
         self.warmed = False
-        logger.info(f"LLM client configured for {base_url}")
+        logger.info(f"LLM client configured for {base_url} using model {model}")
 
     def warmup(self):
+        """Warmup not needed for cloud API (Groq)"""
         if self.warmed:
             return
-        logger.info("Warming up LLM...")
-        try:
-            response = self.client.post(
-                f"{self.base_url}/completions",
-                json={
-                    "prompt": "Hello",
-                    "max_tokens": 1,
-                    "stream": False,
-                },
-            )
-            if response.status_code == 200:
-                self.warmed = True
-                logger.info("LLM warmed up successfully")
-            else:
-                logger.warning(f"LLM warmup failed: {response.status_code}")
-        except Exception as e:
-            logger.warning(f"LLM warmup error: {e}")
+        logger.info("LLM warmup skipped for cloud API")
+        self.warmed = True
 
     def generate(self, prompt: str, system_prompt: str = None) -> str:
         messages = []

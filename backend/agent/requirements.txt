@@ -7,3 +7,4 @@ httpx
 numpy
 scipy
 sse-starlette
+python-dotenv

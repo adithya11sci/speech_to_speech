@@ -1,14 +1,24 @@
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv(Path(__file__).parent.parent / ".env")
 
 BASE_DIR = Path(__file__).parent.parent
 MODELS_DIR = BASE_DIR / "models"
 
+# LiveKit Configuration
 LIVEKIT_URL = os.environ.get("LIVEKIT_URL", "ws://localhost:7880")
 LIVEKIT_API_KEY = os.environ.get("LIVEKIT_API_KEY", "devkey")
 LIVEKIT_API_SECRET = os.environ.get("LIVEKIT_API_SECRET", "secret")
 
-LLAMA_SERVER_URL = os.environ.get("LLAMA_SERVER_URL", "http://localhost:8080/v1")
+# Groq API Configuration
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")  # Set in .env file
+if not GROQ_API_KEY:
+    raise ValueError("GROQ_API_KEY not found in environment variables. Please set it in backend/.env")
+GROQ_API_BASE = "https://api.groq.com/openai/v1"
+GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.1-8b-instant")
 
 AVAILABLE_VOICES = {
     "af_sarah": "Female, clear and professional",
@@ -26,9 +36,6 @@ KOKORO_MODEL_PATH = MODELS_DIR / "kokoro" / "kokoro-v1.0.onnx"
 KOKORO_VOICES_PATH = MODELS_DIR / "kokoro" / "voices-v1.0.bin"
 
 ASR_MODEL_SIZE = os.environ.get("ASR_MODEL_SIZE", "base")
-
-LLAMA_MODEL_PATH = MODELS_DIR / "Llama-3.2-3B-Instruct-Q4_K_M.gguf"
-LLAMA_CONTEXT_SIZE = int(os.environ.get("LLAMA_CONTEXT_SIZE", "2048"))
 
 SYSTEM_PROMPT = """You are a helpful AI assistant. Keep your responses concise and natural.
 Respond as if you're having a real conversation. Don't be overly formal."""

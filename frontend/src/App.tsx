@@ -64,7 +64,15 @@ export default function App() {
       room.on(RoomEvent.Connected, async () => {
         setConnState('connected')
         addMessage('system', '✅ Connected. Start speaking!')
-        const audioTrack = await createLocalAudioTrack({ echoCancellation: true, noiseSuppression: true })
+        // Advanced audio constraints to prevent feedback loop
+        const audioTrack = await createLocalAudioTrack({ 
+          echoCancellation: true, 
+          noiseSuppression: true,
+          autoGainControl: true,
+          // Additional constraints to prevent system audio capture
+          channelCount: 1,
+          sampleRate: 48000,
+        })
         audioTrackRef.current = audioTrack
         await room.localParticipant.publishTrack(audioTrack)
       })

@@ -113,9 +113,12 @@ async def entrypoint(ctx: JobContext):
     processing_lock = asyncio.Lock()  # Prevent concurrent processing
     active_tasks = set()  # Track active audio processing tasks
     processed_tracks = set()  # Prevent duplicate track processing
+    agent_speaking = False  # Flag to prevent processing user audio while agent is speaking
 
     async def process_audio(audio_track, participant_id):
         """Process audio from a single participant's track."""
+        nonlocal agent_speaking
+        
         # Type narrowing: models are guaranteed to be loaded by this point
         assert asr_model is not None, "ASR model not loaded"
         assert llm_client is not None, "LLM client not loaded"
@@ -162,6 +165,14 @@ async def entrypoint(ctx: JobContext):
                 )
                 
                 if should_process and audio_buffer:
+                    # Skip processing if agent is currently speaking (prevents feedback loop)
+                    if agent_speaking:
+                        logger.debug("Agent is speaking, ignoring user audio to prevent feedback")
+                        audio_buffer = []
+                        silence_frames = 0
+                        last_speech_time = 0
+                        continue
+                    
                     # Check if we can process (not already processing)
                     if processing_lock.locked():
                         logger.debug("Already processing speech, skipping this buffer")
@@ -216,25 +227,33 @@ async def entrypoint(ctx: JobContext):
                                     reliable=True,
                                 )
 
-                                # Stream TTS sentence-by-sentence for lower latency
-                                sentences = split_into_sentences(response)
-                                for sentence in sentences:
-                                    audio_data, sr = await loop.run_in_executor(
-                                        None, lambda s=sentence: _tts.generate(s)
-                                    )
-                                    resampled = resample_wav_to_48k(audio_data, sr)
+                                # Set flag to prevent processing user audio during TTS playback
+                                agent_speaking = True
+                                try:
+                                    # Stream TTS sentence-by-sentence for lower latency
+                                    sentences = split_into_sentences(response)
+                                    for sentence in sentences:
+                                        audio_data, sr = await loop.run_in_executor(
+                                            None, lambda s=sentence: _tts.generate(s)
+                                        )
+                                        resampled = resample_wav_to_48k(audio_data, sr)
+                                        
+                                        # Send audio in chunks
+                                        for i in range(0, len(resampled), 1920):
+                                            chunk = resampled[i:i+1920]
+                                            if len(chunk) > 0:
+                                                int16_chunk = (chunk * 32767).astype(np.int16).tobytes()
+                                                await audio_source.capture_frame(rtc.AudioFrame(
+                                                    data=int16_chunk,
+                                                    sample_rate=48000,
+                                                    num_channels=1,
+                                                    samples_per_channel=len(chunk),
+                                                ))
                                     
-                                    # Send audio in chunks
-                                    for i in range(0, len(resampled), 1920):
-                                        chunk = resampled[i:i+1920]
-                                        if len(chunk) > 0:
-                                            int16_chunk = (chunk * 32767).astype(np.int16).tobytes()
-                                            await audio_source.capture_frame(rtc.AudioFrame(
-                                                data=int16_chunk,
-                                                sample_rate=48000,
-                                                num_channels=1,
-                                                samples_per_channel=len(chunk),
-                                            ))
+                                    # Add small delay to let audio finish playing
+                                    await asyncio.sleep(0.5)
+                                finally:
+                                    agent_speaking = False
                             else:
                                 logger.debug(f"Ignoring short/empty transcription: '{text}'")
 
@@ -255,7 +274,9 @@ async def entrypoint(ctx: JobContext):
 
     # Register event handler BEFORE connecting
     @ctx.room.on("track_subscribed")
-    def on_track_subscribed(track: rtc.Track, publication, participant):
+    def on_track_subscribed(track: rtc.Track, publication, participant: rtc.RemoteParticipant):
+        # CRITICAL: Only process audio from remote participants, not from the agent itself
+        # This prevents the agent from listening to its own voice output (feedback loop)
         if track.kind == rtc.TrackKind.KIND_AUDIO:
             logger.info(f"✅ Subscribed to audio track from {participant.identity}")
             start_track(track, participant.identity)

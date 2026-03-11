@@ -27,11 +27,16 @@ class ASR:
             audio,
             language="en",
             beam_size=5,
-            vad_filter=False,  # Disable VAD - causing issues
+            vad_filter=True,  # Enable VAD to filter out silence
+            vad_parameters=dict(
+                threshold=0.5,  # Higher threshold for voice activity
+                min_speech_duration_ms=250,  # Minimum speech duration
+                min_silence_duration_ms=1000,  # Longer silence required
+            ),
             initial_prompt="",  # No initial prompt
-            log_prob_threshold=-2.5,  # Very lenient
-            no_speech_threshold=0.9,   # Very lenient
-            compression_ratio_threshold=4.0,  # Very lenient
+            log_prob_threshold=-1.0,  # More strict - reject low confidence
+            no_speech_threshold=0.6,   # Higher threshold - reject non-speech
+            compression_ratio_threshold=2.4,  # Reject highly compressed (noisy) audio
         )
         text = " ".join([seg.text for seg in segments])
         return text.strip()

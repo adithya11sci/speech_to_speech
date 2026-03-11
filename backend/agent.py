@@ -151,7 +151,7 @@ async def entrypoint(ctx: JobContext):
 
                 # Detect voice activity
                 volume = np.abs(float_data).max()
-                if volume > 0.01:  # Voice detected
+                if volume > 0.03:  # Increased threshold to reduce sensitivity to background noise
                     silence_frames = 0
                     last_speech_time = len(audio_buffer)
                 else:
@@ -160,8 +160,8 @@ async def entrypoint(ctx: JobContext):
                 # Process when we have enough audio with silence after speech
                 buffer_length = len(audio_buffer)
                 should_process = (
-                    (buffer_length >= 400) or  # ~4 seconds of audio
-                    (buffer_length >= 100 and silence_frames > 100 and last_speech_time > 0)  # 1s silence after speech
+                    (buffer_length >= 400 and last_speech_time > 50) or  # ~4 seconds with actual speech
+                    (buffer_length >= 150 and silence_frames > 150 and last_speech_time > 50)  # 1.5s silence after speech
                 )
                 
                 if should_process and audio_buffer:
@@ -194,10 +194,19 @@ async def entrypoint(ctx: JobContext):
                                 None, lambda: _asr.transcribe(full_audio, 16000)
                             )
                             
-                            logger.info(f"📝 Transcription: '{text}' (length: {len(text.strip())})")
+                            # Clean and validate transcription
+                            text = text.strip()
+                            
+                            # Filter out common false positives and very short utterances
+                            false_positives = ['you', 'uh', 'um', 'oh', 'ah', 'okay', '.', ',', '!', '?']
+                            if text.lower() in false_positives:
+                                logger.debug(f"Ignoring false positive: '{text}'")
+                                continue
+                            
+                            logger.info(f"📝 Transcription: '{text}' (length: {len(text)})")
 
-                            # Only process if we have meaningful text
-                            if text and len(text.strip()) > 2:
+                            # Only process if we have meaningful text (at least 5 characters)
+                            if text and len(text) >= 5:
                                 logger.info(f"👤 User: {text}")
 
                                 # Publish user message
